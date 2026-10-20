@@ -4,6 +4,8 @@ Prepares the heavy things once, on GitHub, so TV boxes only download small ready
   out/guide.bin        the programme guide in the app's own format (EpgStore.java) — no XML to read on the box
   out/logos/<sha1>.png every channel logo made small (<= 112 px); <sha1> = SHA-1 of the logo's address
   out/meta.json        when it was made and how much is inside
+  out/api/now.json     what is on now and in the next hours, all channels (titles only) — Cloudflare /epg/now
+  out/api/s-NNN.json   all days of each channel, split into 128 parts by channel — Cloudflare /epg/ch?id=…
 
 Addresses come from the environment (GitHub → Settings → Secrets → Actions), never from this file:
   PLAYLIST_URL  the playlist (only channel ids, names and logo addresses are read; stream links are NOT saved)
@@ -178,6 +180,41 @@ def logo_one(url):
     return 'bad'
 
 
+SHARDS = 128
+
+
+def shard_of(gid):
+    return int(hashlib.sha1(gid.encode('utf-8')).hexdigest()[:4], 16) % SHARDS
+
+
+def write_api(by, icons, names, want_names):
+    """Small files the Cloudflare worker hands out, so TVs never download the whole guide."""
+    d = os.path.join(OUT, 'api')
+    os.makedirs(d, exist_ok=True)
+    frm, to = NOW - 2 * 3600000, NOW + 10 * 3600000
+    now = {}
+    for gid, l in by.items():
+        part = [[s, e, t] for s, e, t, _ in l if e > frm and s < to]
+        if part:
+            now[gid] = part
+    n = {k: v for k, v in names.items() if v in by and (not want_names or k in want_names)}
+    i = {}
+    for gid, u in icons.items():
+        if gid in by and u.startswith('http'):
+            h = hashlib.sha1(u.encode('utf-8')).hexdigest()
+            if os.path.exists(os.path.join(OUT, 'logos', h + '.png')):
+                i[gid] = h
+    with open(os.path.join(d, 'now.json'), 'w', encoding='utf-8') as f:
+        json.dump({'at': NOW, 'ids': now, 'n': n, 'i': i, 'shards': SHARDS}, f, ensure_ascii=False, separators=(',', ':'))
+    parts = [dict() for _ in range(SHARDS)]
+    for gid, l in by.items():
+        parts[shard_of(gid)][gid] = [[s, e, t, dd] if dd else [s, e, t] for s, e, t, dd in l]
+    for k, part in enumerate(parts):
+        with open(os.path.join(d, 's-%03d.json' % k), 'w', encoding='utf-8') as f:
+            json.dump(part, f, ensure_ascii=False, separators=(',', ':'))
+    print('api: now.json', os.path.getsize(os.path.join(d, 'now.json')) // 1024, 'KB,', SHARDS, 'parts')
+
+
 def main():
     os.makedirs(os.path.join(OUT, 'logos'), exist_ok=True)
     pl = os.environ.get('PLAYLIST_URL', '').strip()
@@ -200,6 +237,8 @@ def main():
         for r in ex.map(logo_one, urls):
             stat[r] = stat.get(r, 0) + 1
     print('logos:', stat)
+    if by:
+        write_api(by, icons, names, want_names)
     meta = {'at': NOW, 'channels': len(by), 'programmes': progs, 'logos': len(os.listdir(os.path.join(OUT, 'logos')))}
     with open(os.path.join(OUT, 'meta.json'), 'w') as f:
         json.dump(meta, f)
