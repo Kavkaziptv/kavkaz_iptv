@@ -43,7 +43,8 @@ def get(url, timeout=120):
 # ---------------------------------------------------------------- playlist (ids, names, logos only)
 def read_playlist(url):
     text = get(url).decode('utf-8', 'replace')
-    tvg = re.search(r'url-tvg="([^"]+)"', text[:4000])
+    head = text[:8000]
+    tvg = re.search(r'(?:x-tvg-url|url-tvg|tvg-url)\s*=\s*"([^"]+)"', head) or re.search(r"(?:x-tvg-url|url-tvg|tvg-url)\s*=\s*'([^']+)'", head)
     chans = []
     for line in text.splitlines():
         if not line.startswith('#EXTINF'):
@@ -51,7 +52,9 @@ def read_playlist(url):
         attr = dict(re.findall(r'([\w-]+)="([^"]*)"', line))
         name = line.rsplit(',', 1)[-1].strip()
         chans.append({'id': attr.get('tvg-id', ''), 'name': (attr.get('tvg-name') or name).strip().lower(), 'logo': attr.get('tvg-logo', '')})
-    return chans, (tvg.group(1).split(',') if tvg else [])
+    epg = [u.strip() for u in re.split(r'[,\s]+', tvg.group(1)) if u.strip()] if tvg else []
+    print('playlist: channels', len(chans), '· guide addresses in it:', len(epg))
+    return chans, epg
 
 
 # ---------------------------------------------------------------- guide
@@ -180,6 +183,8 @@ def main():
     pl = os.environ.get('PLAYLIST_URL', '').strip()
     chans, tvg = (read_playlist(pl) if pl else ([], []))
     epg = os.environ.get('EPG_URL', '').split() or tvg
+    if not epg:
+        sys.exit('no guide address: the playlist has no url-tvg / x-tvg-url — add the guide link as the EPG_URL secret')
     want_ids = {c['id'] for c in chans if c['id']}
     want_names = {c['name'] for c in chans if c['name']}
     t0 = time.time()
