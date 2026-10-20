@@ -30,4 +30,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view prep >/dev/null 2>&1 || gh release create prep --title "Kavkaz: ready guide" --notes "Updated automatically"
-          gh release upload prep prep/guide.bin prep/meta.json --clobber
+          gh release upload prep prep/guide.bin prep/meta.json prep/api/*.json --clobber
