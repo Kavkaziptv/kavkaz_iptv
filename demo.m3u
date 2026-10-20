@@ -1,0 +1,7 @@
+#EXTM3U
+#EXTINF:-1 group-title="Demo" tvg-logo="https://adelina2024.github.io/msx/icon.png",Big Buck Bunny (test stream)
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 group-title="Demo" tvg-logo="https://adelina2024.github.io/msx/icon.png",Tears of Steel (test stream)
+https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8
+#EXTINF:-1 group-title="Demo" tvg-logo="https://adelina2024.github.io/msx/icon.png",Apple BipBop (test stream)
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
