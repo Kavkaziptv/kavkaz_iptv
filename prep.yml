@@ -1,0 +1,33 @@
+name: prep
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: prep
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pillow
+      - name: Make guide and logos
+        env:
+          PLAYLIST_URL: ${{ secrets.PLAYLIST_URL }}
+          EPG_URL: ${{ secrets.EPG_URL }}
+          OUT: prep
+        run: python3 prep.py
+      - name: Logos to the site
+        run: |
+          git config user.name kavkaz-prep
+          git config user.email prep@users.noreply.github.com
+          git add prep/logos
+          git commit -m "prep: logos" && git push || echo "no new logos"
+      - name: Guide to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view prep >/dev/null 2>&1 || gh release create prep --title "Kavkaz: ready guide" --notes "Updated automatically"
+          gh release upload prep prep/guide.bin prep/meta.json --clobber
