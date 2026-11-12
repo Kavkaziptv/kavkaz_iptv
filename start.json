@@ -1,6 +1,6 @@
 {
   "name": "Kavkaz IPTV",
-  "version": "2.7.0",
+  "version": "2.8.5",
   "parameter": "content:https://kavkaziptv.github.io/kavkaz_iptv/content.json",
   "welcome": "none",
   "launcher": { "image": "https://kavkaziptv.github.io/kavkaz_iptv/banner.png", "color": "#1E0C3A" }
