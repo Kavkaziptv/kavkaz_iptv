@@ -1,0 +1,25 @@
+name: check
+on:
+  schedule:
+    - cron: '7 23 * * *'   # every night at 03:07 Baku time
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: check
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check channels
+        env:
+          PLAYLIST_URL: ${{ secrets.PLAYLIST_URL }}
+          OUT: prep
+        run: python3 check.py
+      - name: Result to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view prep >/dev/null 2>&1 || gh release create prep --title "Kavkaz: ready guide" --notes "Updated automatically"
+          gh release upload prep prep/check.json --clobber
